@@ -1,0 +1,93 @@
+# =========================
+# .NET
+# =========================
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+
+# =========================
+# JetBrains / Rider
+# =========================
+.idea/
+*.sln.iml
+
+# =========================
+# VS Code
+# =========================
+.vscode/
+
+# =========================
+# NuGet
+# =========================
+*.nupkg
+*.snupkg
+
+# =========================
+# Blazor / Node
+# =========================
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# =========================
+# Build / publish output
+# =========================
+**/publish/
+**/artifacts/
+
+# =========================
+# Environment / secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# Local configuration overrides
+appsettings.Local.json
+appsettings.*.local.json
+
+# =========================
+# Certificates / private keys
+# =========================
+*.pfx
+*.p12
+*.key
+*.pem
+
+# =========================
+# Logs
+# =========================
+*.log
+logs/
+**/logs/
+
+# =========================
+# Docker / local persisted data
+# =========================
+docker-data/
+docker-volumes/
+volumes/
+
+# Pulsar persisted data
+pulsar-data/
+pulsar-logs/
+**/pulsar-data/
+**/pulsar-logs/
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# =========================
+# Temporary files
+# =========================
+*.tmp
+*.temp
+*.bak
+*.swp
