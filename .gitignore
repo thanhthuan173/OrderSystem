@@ -91,3 +91,4 @@ Desktop.ini
 *.temp
 *.bak
 *.swp
+**/appsettings.Development.json
