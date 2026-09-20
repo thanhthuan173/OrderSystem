@@ -1,14 +1,16 @@
-﻿using Contracts.Events;
+﻿using System.Text.Json;
+using Contracts.Events;
 using Microsoft.EntityFrameworkCore;
 using Orders.Data;
 using Orders.Data.Entities;
 using Orders.Models;
-using System.Text.Json;
 
 namespace Orders.Services
 {
     public class OrderService
     {
+        private const string OrderPlacedTopic = "persistent://public/default/order-placed";
+
         private readonly OrdersDbContext _db;
 
         public OrderService(OrdersDbContext db)
@@ -66,7 +68,7 @@ namespace Orders.Services
             _db.OutboxMessages.Add(new OutboxMessage
             {
                 EventId = orderPlacedEvent.EventId,
-                Topic = "",
+                Topic = OrderPlacedTopic,
                 Payload = JsonSerializer.Serialize(orderPlacedEvent),
                 CreatedAt = DateTime.UtcNow,
                 PublishedAt = null
@@ -77,12 +79,12 @@ namespace Orders.Services
             return new CreateOrderResponse(orderId, orderId.ToString(), order.Status.ToString());
         }
 
-        public async Task<GetOrderResponse> GetOrderAsync(Guid id)
+        public async Task<GetOrderResponse> GetOrderAsync(Guid id, CancellationToken cancellationToken)
         {
             var order = await _db.Orders
                 .Include(o => o.SagaState)
                 .Include(o => o.Lines)
-                .FirstOrDefaultAsync(o => o.Id == id)
+                .FirstOrDefaultAsync(o => o.Id == id, cancellationToken)
                 ?? throw new Exception("Order not found");
 
             var lines = new List<GetOrderLineResponse>();
@@ -106,9 +108,9 @@ namespace Orders.Services
                 order.UpdatedAt);
         }
 
-        public async Task<IEnumerable<GetUserOrderResponse>> GetUserOrdersAsync(string customerId)
+        public async Task<IEnumerable<GetUserOrderResponse>> GetUserOrdersAsync(string customerId, CancellationToken cancellationToken)
         {
-            var userOrders =  await _db.Orders.Where(o=>o.CustomerId==customerId).ToListAsync();
+            var userOrders =  await _db.Orders.Where(o=>o.CustomerId==customerId).ToListAsync(cancellationToken);
 
             var orders = new List<GetUserOrderResponse>();
             foreach(var order in userOrders)
@@ -121,6 +123,48 @@ namespace Orders.Services
             }
 
             return orders;
+        }
+
+        public async Task HandleReservationAsync(
+            EventBase @event,
+            CancellationToken cancellationToken,
+            bool IsReservationFailed)
+        {
+            await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+
+            var alreadyProcessed = await _db.InboxMessages
+                .AnyAsync(i=>i.EventId == @event.EventId, cancellationToken);
+
+            if(alreadyProcessed)
+            {
+                return;
+            }
+
+            var order = await _db.Orders
+                .Include(o=>o.SagaState)
+                .SingleAsync(o => o.Id == @event.OrderId, cancellationToken);
+
+            if (IsReservationFailed)
+            {
+                order.Status = OrderStatus.Cancelled;
+            }
+            else
+            {
+                order.Status = OrderStatus.Charging;
+            }
+            
+            order.UpdatedAt = DateTime.UtcNow;
+            order.SagaState.ReservationCompleted = true;
+
+            _db.InboxMessages.Add(new InboxMessage
+            {
+                EventId = @event.EventId,
+                ProcessedAt = DateTime.UtcNow
+            });
+
+            await _db.SaveChangesAsync(cancellationToken);
+
+            await transaction.CommitAsync(cancellationToken);
         }
 
         private void ValidateOrder(CreateOrderRequest request)

@@ -29,16 +29,16 @@ namespace Orders.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, "An unexpected error occurred.");
+                return StatusCode(500, ex.Message);
             }
         }
 
         [HttpGet("{id:guid}")]
-        public async Task<IActionResult> GetOrder([FromRoute] Guid id)
+        public async Task<IActionResult> GetOrder([FromRoute] Guid id, CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _orderService.GetOrderAsync(id);
+                var result = await _orderService.GetOrderAsync(id, cancellationToken);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -49,11 +49,11 @@ namespace Orders.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetUserOrders([FromQuery] string customerId)
+        public async Task<IActionResult> GetUserOrders([FromQuery] string customerId, CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _orderService.GetUserOrdersAsync(customerId);
+                var result = await _orderService.GetUserOrdersAsync(customerId, cancellationToken);
                 return Ok(result);
             }
             catch (Exception ex)

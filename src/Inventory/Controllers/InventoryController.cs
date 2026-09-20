@@ -16,11 +16,11 @@ namespace Inventory.Controllers
         }
 
         [HttpGet("stock")]
-        public async Task<IActionResult> GetStockItem()
+        public async Task<IActionResult> GetStockItem(CancellationToken cancellationToken)
         {
             try
             {
-                var ressult = await _inventoryService.GetStockItemAsync();
+                var ressult = await _inventoryService.GetStockItemAsync(cancellationToken);
                 return Ok(ressult);
             }
             catch(Exception ex)
@@ -30,11 +30,11 @@ namespace Inventory.Controllers
         }
 
         [HttpPost("stock/{sku}/adjust")]
-        public async Task<IActionResult> AdjustStockItem([FromRoute] string sku, [FromBody] AdjustStockRequest request)
+        public async Task<IActionResult> AdjustStockItem([FromRoute] string sku, [FromBody] AdjustStockRequest request, CancellationToken cancellationToken)
         {
             try
             {
-                return Ok(await _inventoryService.AdjustStockItemAsync(sku, request));
+                return Ok(await _inventoryService.AdjustStockItemAsync(sku, request, cancellationToken));
             }
             catch (Exception ex)
             {

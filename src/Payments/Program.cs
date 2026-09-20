@@ -1,9 +1,8 @@
 using DotPulsar;
 using DotPulsar.Abstractions;
-using Messaging;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Payments.Data;
+using Payments.Messaging;
 using Payments.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,29 +14,21 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<PaymentsDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection")));
-builder.Services.Configure<PulsarOptions>(
-    builder.Configuration.GetSection("Pulsar"));
 
-builder.Services.AddSingleton<IPulsarClient>(sp =>
+builder.Services.AddSingleton<IPulsarClient>(_ =>
 {
-    var options = sp
-        .GetRequiredService<IOptions<PulsarOptions>>()
-        .Value;
-
-    if (string.IsNullOrWhiteSpace(options.ServiceUrl))
-    {
-        throw new InvalidOperationException(
-            "Pulsar service URL is not configured.");
-    }
+    var serviceUrl = builder.Configuration["PULSAR_SERVICE_URL"]
+        ?? throw new InvalidOperationException("PULSAR_SERVICE_URL is not configured");
 
     return PulsarClient
         .Builder()
-        .ServiceUrl(new Uri(options.ServiceUrl))
+        .ServiceUrl(new Uri(serviceUrl))
         .Build();
 });
 
-builder.Services.AddSingleton<IPulsarEventPublisher, PulsarEventPublisher>();
 builder.Services.AddScoped<PaymentService>();
+builder.Services.AddHostedService<OutboxMessagePublisher>();
+builder.Services.AddHostedService<ReservationSucceededConsumer>();
 
 var app = builder.Build();
 
@@ -52,8 +43,3 @@ app.UseHttpsRedirection();
 app.MapControllers();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

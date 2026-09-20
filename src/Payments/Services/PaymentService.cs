@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Contracts.Events;
+using Microsoft.EntityFrameworkCore;
 using Payments.Data;
 using Payments.Models;
 
@@ -13,9 +14,9 @@ namespace Payments.Services
             _db = db;
         }
 
-        public async Task<GetPaymentResponse> GetPaymentAsync(Guid orderId)
+        public async Task<GetPaymentResponse> GetPaymentAsync(Guid orderId, CancellationToken cancellationToken)
         {
-            var payment = await _db.Payments.FirstOrDefaultAsync(x => x.OrderId == orderId)
+            var payment = await _db.Payments.FirstOrDefaultAsync(x => x.OrderId == orderId, cancellationToken)
                 ??throw new Exception("Payment not found");
 
             return new GetPaymentResponse(
@@ -24,6 +25,13 @@ namespace Payments.Services
                 payment.Amount,
                 payment.Status.ToString(),
                 payment.CreatedAt);
+        }
+
+        public async Task HandleReservationSucceededAsync(
+            EventBase @event,
+            CancellationToken cancellationToken)
+        {
+
         }
     }
 }
