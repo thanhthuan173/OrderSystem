@@ -9,10 +9,10 @@ namespace Inventory.Messaging
 {
     public sealed class OrderPlacedConsumer : BackgroundService
     {
-        private const string OrderPlacedTopic =
+        private const string OrderPlaced_Topic =
             "persistent://public/default/order-placed";
 
-        private const string InventoryOrderPlacedSubscription =
+        private const string Inventory_OrderPlaced_Subscription =
             "inventory-order-placed";
 
         private readonly IServiceScopeFactory _scopeFactory;
@@ -34,8 +34,8 @@ namespace Inventory.Messaging
         {
             await using var consumer = _pulsarClient
                     .NewConsumer(Schema.String)
-                    .Topic(OrderPlacedTopic)
-                    .SubscriptionName(InventoryOrderPlacedSubscription)
+                    .Topic(OrderPlaced_Topic)
+                    .SubscriptionName(Inventory_OrderPlaced_Subscription)
                     .InitialPosition(SubscriptionInitialPosition.Earliest)
                     .Create();
 

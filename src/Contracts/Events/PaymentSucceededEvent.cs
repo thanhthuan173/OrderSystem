@@ -8,10 +8,9 @@
         public PaymentSucceededEvent(
             Guid eventId,
             Guid orderId,
-            DateTime timestamp,
             Guid paymentId,
             decimal amount)
-            : base(eventId, orderId, timestamp)
+            : base(eventId, orderId)
         {
             PaymentId = paymentId;
             Amount = amount;

@@ -11,7 +11,7 @@ namespace Payments.Messaging
     {
         private const string ReservationSucceeded_Topic =
             "persistent://public/default/reservation-succeeded";
-        private const string Order_ReservationSucceeded_Subscription =
+        private const string Payments_ReservationSucceeded_Subscription =
             "payments-reservation-succeeded";
 
         private readonly IServiceScopeFactory _scopeFactory;
@@ -33,7 +33,7 @@ namespace Payments.Messaging
             await using var consumer = _pulsarClient
                 .NewConsumer(Schema.String)
                 .Topics(ReservationSucceeded_Topic)
-                .SubscriptionName(Order_ReservationSucceeded_Subscription)
+                .SubscriptionName(Payments_ReservationSucceeded_Subscription)
                 .InitialPosition(SubscriptionInitialPosition.Earliest)
                 .Create();
 

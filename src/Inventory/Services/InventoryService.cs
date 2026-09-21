@@ -9,13 +9,10 @@ namespace Inventory.Services
 {
     public class InventoryService
     {
-        private const string ReservationFailedTopic = "persistent://public/default/reservation-failed";
-        private const string ReservationSucceededTopic = "persistent://public/default/reservation-succeeded";
+        private const string ReservationFailed_Topic = "persistent://public/default/reservation-failed";
+        private const string ReservationSucceeded_Topic = "persistent://public/default/reservation-succeeded";
 
         private readonly InventoryDbContext _db;
-
-        EventBase? reservationResult = null;
-        string? topic = null;
 
         public InventoryService(InventoryDbContext db)
         {
@@ -89,80 +86,57 @@ namespace Inventory.Services
                 return;
             }
 
-            string? failureReason = null;
+            EventBase reservationResult;
+            string topic;
 
-            foreach(var line in @event.Lines)
+            string? failureReason = await ValidateLines(@event.Lines, cancellationToken);
+
+            if(failureReason is not null)
             {
-                var stock = await _db.StockItems
-                    .FirstOrDefaultAsync(s=>s.Sku == line.Sku, cancellationToken);
+                reservationResult = new ReservationFailedEvent(
+                    Guid.NewGuid(),
+                    @event.OrderId,
+                    failureReason);
 
-                if(stock is null)
+                topic = ReservationFailed_Topic;
+            }
+            else
+            {
+                foreach ( var line in @event.Lines )
                 {
-                    failureReason = $"SKU {line.Sku} does not exists";
-                    break;
-                }
+                    var stock = await _db.StockItems
+                        .FirstOrDefaultAsync(s => s.Sku == line.Sku, cancellationToken);
 
-                var available = stock.QuantityOnHand - stock.QuantityReserved;
+                    stock!.QuantityReserved += line.Quantity;
 
-                if (available < line.Quantity)
-                {
-                    failureReason = $"Not enough stock for SKU {line.Sku}";
-                }
-
-                if (failureReason is not null)
-                {
-                    RollbackChanges();
-
-                    reservationResult = new ReservationFailedEvent(
-                        Guid.NewGuid(),
-                        @event.OrderId,
-                        @event.Timestamp,
-                        failureReason);
-                    topic = ReservationFailedTopic;
-
-                    _db.OutboxMessages.Add(new OutboxMessage
-                    {
-                        EventId = reservationResult!.EventId,
-                        Topic = topic!,
-                        Payload = JsonSerializer.Serialize(reservationResult),
-                        CreatedAt = DateTime.UtcNow
-                    });
-
-                    await _db.SaveChangesAsync(cancellationToken);
-
-                    await transaction.CommitAsync(cancellationToken);
-
-                    return;
-                }
-                else
-                {
-                    topic = ReservationSucceededTopic;
-
-                    stock.QuantityReserved += line.Quantity;
-
-                    var reservation = new Reservation
+                    _db.Reservations.Add(new Reservation
                     {
                         OrderId = @event.OrderId,
                         Sku = line.Sku,
                         Quantity = line.Quantity,
                         Status = ReservationStatus.Active,
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    _db.Reservations.Add(reservation);
-
-                    reservationResult = new ReservationSucceededEvent(
-                        Guid.NewGuid(),
-                        @event.OrderId,
-                        @event.Timestamp,
-                        @event.Lines);
-                    topic = ReservationSucceededTopic;
+                        CreatedAt = DateTime.UtcNow,
+                    });
                 }
+
+                reservationResult = new ReservationSucceededEvent(
+                    Guid.NewGuid(),
+                    @event.OrderId,
+                    @event.Lines);
+
+                topic= ReservationSucceeded_Topic;
             }
+
+            _db.InboxMessages.Add(new InboxMessage
+            {
+                EventId = @event.EventId,
+                ProcessedAt = DateTime.UtcNow
+            });
 
             _db.OutboxMessages.Add(new OutboxMessage
             {
-                EventId = reservationResult!.EventId,
-                Topic = topic!,
+                EventId = reservationResult.EventId,
+                Topic = topic,
                 Payload = JsonSerializer.Serialize(reservationResult),
                 CreatedAt = DateTime.UtcNow
             });
@@ -172,23 +146,27 @@ namespace Inventory.Services
             await transaction.CommitAsync(cancellationToken);
         }
 
-        private void RollbackChanges()
+        private async Task<string?> ValidateLines(List<OrderLineContract> lines,CancellationToken cancellationToken)
         {
-            foreach (var entry in _db.ChangeTracker.Entries())
+            foreach(var line in lines)
             {
-                switch (entry.State)
-                {
-                    case EntityState.Modified:
-                        entry.CurrentValues.SetValues(entry.OriginalValues);
-                        entry.State = EntityState.Unchanged;
-                        break;
+                var stock = await _db.StockItems
+                    .FirstOrDefaultAsync(s => s.Sku == line.Sku, cancellationToken);
 
-                    case EntityState.Added:
-                        entry.CurrentValues.SetValues(entry.OriginalValues);
-                        entry.State = EntityState.Detached;
-                        break;
+                if(stock == null)
+                {
+                    return $"SKU {line.Sku} does not exists";
+                }
+
+                var available = stock.QuantityOnHand - stock.QuantityReserved;
+
+                if (available < line.Quantity)
+                {
+                    return $"Not enough stock for SKU {line.Sku}";
                 }
             }
+
+            return null;
         }
     }
 }

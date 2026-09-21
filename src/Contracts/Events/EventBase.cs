@@ -4,16 +4,13 @@
     {
         public Guid EventId { get; init; }
         public Guid OrderId { get; init; }
-        public DateTime Timestamp { get; init; }
 
         protected EventBase(
             Guid eventId,
-            Guid orderId,
-            DateTime timestamp)
+            Guid orderId)
         {
             EventId = eventId;
             OrderId = orderId;
-            Timestamp = timestamp;
         }
     }
 }

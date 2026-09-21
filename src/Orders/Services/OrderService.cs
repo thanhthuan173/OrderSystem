@@ -56,7 +56,6 @@ namespace Orders.Services
             var orderPlacedEvent = new OrderPlacedEvent(
                 eventId: Guid.NewGuid(),
                 orderId: orderId,
-                timestamp: DateTime.UtcNow,
                 customerId: request.CustomerId,
                 lines: request.Lines
                     .Select(line => new OrderLineContract(
@@ -76,7 +75,10 @@ namespace Orders.Services
 
             await _db.SaveChangesAsync(cancellationToken);
 
-            return new CreateOrderResponse(orderId, orderId.ToString(), order.Status.ToString());
+            return new CreateOrderResponse(
+                orderId,
+                orderId.ToString(), 
+                order.Status.ToString());
         }
 
         public async Task<GetOrderResponse> GetOrderAsync(Guid id, CancellationToken cancellationToken)
@@ -110,7 +112,9 @@ namespace Orders.Services
 
         public async Task<IEnumerable<GetUserOrderResponse>> GetUserOrdersAsync(string customerId, CancellationToken cancellationToken)
         {
-            var userOrders =  await _db.Orders.Where(o=>o.CustomerId==customerId).ToListAsync(cancellationToken);
+            var userOrders =  await _db.Orders
+                .Where(o=>o.CustomerId==customerId)
+                .ToListAsync(cancellationToken);
 
             var orders = new List<GetUserOrderResponse>();
             foreach(var order in userOrders)
@@ -130,7 +134,8 @@ namespace Orders.Services
             CancellationToken cancellationToken,
             bool IsReservationFailed)
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+            await using var transaction = await _db.Database
+                .BeginTransactionAsync(cancellationToken);
 
             var alreadyProcessed = await _db.InboxMessages
                 .AnyAsync(i=>i.EventId == @event.EventId, cancellationToken);
@@ -165,6 +170,21 @@ namespace Orders.Services
             await _db.SaveChangesAsync(cancellationToken);
 
             await transaction.CommitAsync(cancellationToken);
+        }
+
+        public async Task HandlePaymentFailedAsync(EventBase @event, CancellationToken cancellationToken)
+        {
+
+        }
+
+        public async Task HandlePaymentSucceededAsync(EventBase @event, CancellationToken cancellationToken)
+        {
+
+        }
+
+        private async Task UpdateStatus()
+        {
+
         }
 
         private void ValidateOrder(CreateOrderRequest request)

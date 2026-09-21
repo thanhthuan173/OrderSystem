@@ -7,9 +7,8 @@
         public ReservationSucceededEvent(
             Guid eventId,
             Guid orderId,
-            DateTime timestamp,
             List<OrderLineContract> lines)
-            : base(eventId, orderId, timestamp)
+            : base(eventId, orderId)
         {
             Lines = lines;
         }

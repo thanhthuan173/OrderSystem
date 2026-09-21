@@ -11,8 +11,8 @@ namespace Orders.Messaging
     {
         private const string ReservationFailed_Topic = 
             "persistent://public/default/reservation-failed";
-        private const string Order_ReservationFailed_Subscription = 
-            "order-reservation-failed";
+        private const string Orders_ReservationFailed_Subscription = 
+            "orders-reservation-failed";
 
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IPulsarClient _pulsarClient;
@@ -33,7 +33,7 @@ namespace Orders.Messaging
             await using var consumer = _pulsarClient
                 .NewConsumer(Schema.String)
                 .Topic(ReservationFailed_Topic)
-                .SubscriptionName(Order_ReservationFailed_Subscription)
+                .SubscriptionName(Orders_ReservationFailed_Subscription)
                 .InitialPosition(SubscriptionInitialPosition.Earliest)
                 .Create();
 

@@ -9,11 +9,10 @@
         public OrderPlacedEvent(
             Guid eventId,
             Guid orderId,
-            DateTime timestamp,
             string customerId,
             List<OrderLineContract> lines,
             decimal totalAmount)
-            : base(eventId, orderId, timestamp)
+            : base(eventId, orderId)
         {
             CustomerId = customerId;
             Lines = lines;

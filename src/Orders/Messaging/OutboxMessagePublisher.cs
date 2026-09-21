@@ -69,6 +69,9 @@ namespace Orders.Messaging
 
                 var orderId = GetOrderId(message.Payload);
 
+                var order = await db.Orders
+                    .FirstOrDefaultAsync(o=>o.Id== orderId);
+
                 var metadata = new MessageMetadata
                 {
                     Key = orderId.ToString()
@@ -78,6 +81,7 @@ namespace Orders.Messaging
                     metadata, message.Payload,
                     cancellationToken);
 
+                order!.Status = Data.Entities.OrderStatus.Reserving;
                 message.PublishedAt = DateTime.UtcNow;
 
                 await db.SaveChangesAsync(cancellationToken);

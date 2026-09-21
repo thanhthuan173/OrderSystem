@@ -7,9 +7,8 @@
         public ReservationFailedEvent(
             Guid eventId,
             Guid orderId,
-            DateTime timestamp,
             string reason)
-            : base(eventId, orderId, timestamp)
+            : base(eventId, orderId)
         {
             Reason = reason;
         }
