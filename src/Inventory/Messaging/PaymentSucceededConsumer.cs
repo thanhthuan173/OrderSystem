@@ -3,25 +3,25 @@ using Contracts.Events;
 using DotPulsar;
 using DotPulsar.Abstractions;
 using DotPulsar.Extensions;
-using Orders.Services;
+using Inventory.Services;
 
-namespace Orders.Messaging
+namespace Inventory.Messaging
 {
-    public sealed class ReservationFailedConsumer : BackgroundService
+    public sealed class PaymentSucceededConsumer : BackgroundService
     {
-        private const string ReservationFailed_Topic = 
-            "persistent://public/default/reservation-failed";
-        private const string Orders_ReservationFailed_Subscription = 
-            "orders-reservation-failed";
+        private const string PaymentSucceeded_Topic =
+            "persistent://public/default/payment-succeeded";
+        private const string Inventory_PaymentSucceeded_Subscription =
+            "inventory-payment-succeeded";
 
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IPulsarClient _pulsarClient;
-        private readonly ILogger<ReservationFailedConsumer> _logger;
+        private readonly ILogger _logger;
 
-        public ReservationFailedConsumer(
+        public PaymentSucceededConsumer(
             IServiceScopeFactory scopeFactory,
             IPulsarClient pulsarClient,
-            ILogger<ReservationFailedConsumer> logger)
+            ILogger logger)
         {
             _scopeFactory = scopeFactory;
             _pulsarClient = pulsarClient;
@@ -32,32 +32,30 @@ namespace Orders.Messaging
         {
             await using var consumer = _pulsarClient
                 .NewConsumer(Schema.String)
-                .Topic(ReservationFailed_Topic)
-                .SubscriptionName(Orders_ReservationFailed_Subscription)
+                .Topic(PaymentSucceeded_Topic)
+                .SubscriptionName(Inventory_PaymentSucceeded_Subscription)
                 .InitialPosition(SubscriptionInitialPosition.Earliest)
                 .Create();
 
-            await foreach(var message in consumer.Messages(cancellationToken))
+            await foreach(var message in consumer.Messages())
             {
                 try
                 {
-                    var @event = JsonSerializer.Deserialize<ReservationFailedEvent>(message.Value())
-                    ?? throw new InvalidOperationException("Could not deserialize ReservationSucceeded event.");
+                    var @event = JsonSerializer.Deserialize<PaymentSucceededEvent>(message.Value())
+                        ?? throw new InvalidOperationException("Could not deserialize OrderPlaced event.");
 
                     using var scope = _scopeFactory.CreateScope();
-                    var orderService = scope.ServiceProvider
-                        .GetRequiredService<OrderService>();
+                    var inventoryService = scope.ServiceProvider
+                        .GetRequiredService<InventoryService>();
 
-                    await orderService.HandleReservationFailedAsync(
-                        @event,
-                        cancellationToken);
+                    await inventoryService.HandlePaymentSucceededAsync(@event, cancellationToken);
 
                     await consumer.Acknowledge(message, cancellationToken);
                 }
                 catch (OperationCanceledException)
-                    when (cancellationToken.IsCancellationRequested)
+                    when(cancellationToken.IsCancellationRequested)
                 {
-
+                    break;
                 }
                 catch (Exception ex)
                 {

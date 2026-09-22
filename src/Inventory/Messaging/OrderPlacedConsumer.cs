@@ -1,9 +1,9 @@
-﻿using Contracts.Events;
+﻿using System.Text.Json;
+using Contracts.Events;
 using DotPulsar;
 using DotPulsar.Abstractions;
 using DotPulsar.Extensions;
 using Inventory.Services;
-using System.Text.Json;
 
 namespace Inventory.Messaging
 {
@@ -44,8 +44,7 @@ namespace Inventory.Messaging
                 try
                 {
                     var @event =
-                        JsonSerializer.Deserialize<OrderPlacedEvent>(
-                            message.Value())
+                        JsonSerializer.Deserialize<OrderPlacedEvent>(message.Value())
                         ?? throw new InvalidOperationException(
                             "Could not deserialize OrderPlaced event.");
 

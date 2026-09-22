@@ -146,6 +146,16 @@ namespace Inventory.Services
             await transaction.CommitAsync(cancellationToken);
         }
 
+        public async Task HandlePaymentFailedAsync(PaymentFailedEvent @event, CancellationToken cancellationToken)
+        {
+
+        }
+
+        public async Task HandlePaymentSucceededAsync(PaymentSucceededEvent @event, CancellationToken cancellationToken)
+        {
+
+        }
+
         private async Task<string?> ValidateLines(List<OrderLineContract> lines,CancellationToken cancellationToken)
         {
             foreach(var line in lines)

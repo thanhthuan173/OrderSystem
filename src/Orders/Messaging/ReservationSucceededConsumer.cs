@@ -47,7 +47,7 @@ namespace Orders.Messaging
                     var orderService = scope.ServiceProvider
                         .GetRequiredService<OrderService>();
 
-                    await orderService.HandleReservationAsync(@event, cancellationToken, false);
+                    await orderService.HandleReservationSucceededAsync(@event, cancellationToken);
 
                     await consumer.Acknowledge(message, cancellationToken);
                 }

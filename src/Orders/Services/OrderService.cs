@@ -129,36 +129,59 @@ namespace Orders.Services
             return orders;
         }
 
-        public async Task HandleReservationAsync(
-            EventBase @event,
-            CancellationToken cancellationToken,
-            bool IsReservationFailed)
+        public async Task HandleReservationFailedAsync(ReservationFailedEvent @event, CancellationToken cancellationToken)
         {
-            await using var transaction = await _db.Database
-                .BeginTransactionAsync(cancellationToken);
+            await HandleReservationAsync(@event, OrderStatus.Cancelled, cancellationToken);
+        }
 
-            var alreadyProcessed = await _db.InboxMessages
-                .AnyAsync(i=>i.EventId == @event.EventId, cancellationToken);
+        public async Task HandleReservationSucceededAsync(ReservationSucceededEvent @event, CancellationToken cancellationToken)
+        {
+            await HandleReservationAsync(@event, OrderStatus.Charging, cancellationToken);
+        }
 
-            if(alreadyProcessed)
+        public async Task HandlePaymentFailedAsync(PaymentFailedEvent @event, CancellationToken cancellationToken)
+        {
+            await HandlePaymentAsync(@event,OrderStatus.Cancelled, cancellationToken);
+        }
+
+        public async Task HandlePaymentSucceededAsync(PaymentSucceededEvent @event, CancellationToken cancellationToken)
+        {
+            await HandlePaymentAsync(@event, OrderStatus.Confirmed, cancellationToken);
+        }
+
+        private async Task HandlePaymentAsync(EventBase @event,OrderStatus orderStatus, CancellationToken cancellationToken)
+        {
+            if(await IsProcessedAsync(@event.EventId, cancellationToken))
             {
                 return;
             }
 
-            var order = await _db.Orders
-                .Include(o=>o.SagaState)
-                .SingleAsync(o => o.Id == @event.OrderId, cancellationToken);
+            var order = await UpdateStatus(
+                @event.OrderId, 
+                orderStatus, 
+                cancellationToken);
+            order.SagaState.PaymentCompleted = true;
 
-            if (IsReservationFailed)
+            _db.InboxMessages.Add(new InboxMessage
             {
-                order.Status = OrderStatus.Cancelled;
-            }
-            else
+                EventId = @event.EventId,
+                ProcessedAt = DateTime.UtcNow
+            });
+
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
+        private async Task HandleReservationAsync(EventBase @event, OrderStatus orderStatus, CancellationToken cancellationToken)
+        {
+            if(await IsProcessedAsync(@event.EventId, cancellationToken))
             {
-                order.Status = OrderStatus.Charging;
+                return;
             }
-            
-            order.UpdatedAt = DateTime.UtcNow;
+
+            var order = await UpdateStatus(
+                @event.OrderId, 
+                orderStatus, 
+                cancellationToken);
             order.SagaState.ReservationCompleted = true;
 
             _db.InboxMessages.Add(new InboxMessage
@@ -168,23 +191,23 @@ namespace Orders.Services
             });
 
             await _db.SaveChangesAsync(cancellationToken);
-
-            await transaction.CommitAsync(cancellationToken);
         }
 
-        public async Task HandlePaymentFailedAsync(EventBase @event, CancellationToken cancellationToken)
+        private async Task<Order> UpdateStatus(Guid orderId,OrderStatus status, CancellationToken cancellationToken)
         {
+            var order = await _db.Orders
+                .Include(o => o.SagaState)
+                .SingleAsync(o => o.Id == orderId, cancellationToken);
 
+            order.Status = status;
+            order.UpdatedAt = DateTime.UtcNow;
+
+            return order;
         }
 
-        public async Task HandlePaymentSucceededAsync(EventBase @event, CancellationToken cancellationToken)
+        private async Task<bool> IsProcessedAsync(Guid eventId, CancellationToken cancellationToken)
         {
-
-        }
-
-        private async Task UpdateStatus()
-        {
-
+            return await _db.InboxMessages.AnyAsync(i=>i.EventId == eventId, cancellationToken);
         }
 
         private void ValidateOrder(CreateOrderRequest request)

@@ -3,7 +3,6 @@ using Contracts.Events;
 using DotPulsar;
 using DotPulsar.Abstractions;
 using DotPulsar.Extensions;
-using DotPulsar.Internal;
 using Orders.Services;
 
 namespace Orders.Messaging
