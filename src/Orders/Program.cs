@@ -26,6 +26,8 @@ builder.Services.AddSingleton<IPulsarClient>(_ =>
         .Build();
 });
 
+builder.Services.AddHostedService<PaymentSucceededConsumer>();
+builder.Services.AddHostedService<PaymentFailedConsumer>();
 builder.Services.AddHostedService<ReservationFailedConsumer>();
 builder.Services.AddHostedService<ReservationSucceededConsumer>();
 builder.Services.AddHostedService<OutboxMessagePublisher>();

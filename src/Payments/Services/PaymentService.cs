@@ -37,8 +37,6 @@ namespace Payments.Services
             ReservationSucceededEvent @event,
             CancellationToken cancellationToken)
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
-
             var alreadyProcessed=await _db.InboxMessages
                 .AnyAsync(i=>i.EventId==@event.EventId, cancellationToken);
 
@@ -60,6 +58,15 @@ namespace Payments.Services
             if (total % 1 == (decimal)0.99)
             {
                 topic = PaymentFailed_Topic;
+
+                var payment = new Payment
+                {
+                    Id = Guid.NewGuid(),
+                    OrderId = @event.OrderId,
+                    Amount = total,
+                    Status = PaymentStatus.Failed,
+                    CreatedAt = DateTime.UtcNow
+                };
 
                 paymentResult = new PaymentFailedEvent(
                     Guid.NewGuid(),
@@ -99,6 +106,8 @@ namespace Payments.Services
                 Payload = JsonSerializer.Serialize(paymentResult),
                 CreatedAt = DateTime.UtcNow
             });
+
+            await _db.SaveChangesAsync(cancellationToken);
         }
     }
 }

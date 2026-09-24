@@ -16,12 +16,12 @@ namespace Payments.Messaging
 
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IPulsarClient _pulsarClient;
-        private readonly ILogger _logger;
+        private readonly ILogger<ReservationSucceededConsumer> _logger;
 
         public ReservationSucceededConsumer(
             IServiceScopeFactory scopeFactory,
             IPulsarClient pulsarClient,
-            ILogger logger)
+            ILogger<ReservationSucceededConsumer> logger)
         {
             _scopeFactory = scopeFactory;
             _pulsarClient = pulsarClient;

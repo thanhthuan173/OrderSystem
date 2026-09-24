@@ -16,12 +16,12 @@ namespace Orders.Messaging
 
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IPulsarClient _pulsarClient;
-        private readonly ILogger _logger;
+        private readonly ILogger<PaymentFailedConsumer> _logger;
 
         public PaymentFailedConsumer(
             IServiceScopeFactory scopeFactory,
             IPulsarClient pulsarClient,
-            ILogger logger)
+            ILogger<PaymentFailedConsumer> logger)
         {
             _scopeFactory = scopeFactory;
             _pulsarClient = pulsarClient;

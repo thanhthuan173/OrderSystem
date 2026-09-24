@@ -76,8 +76,6 @@ namespace Inventory.Services
             OrderPlacedEvent @event,
             CancellationToken cancellationToken)
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
-
             var alreadyProcessed = await _db.InboxMessages
                 .AnyAsync(i => i.EventId == @event.EventId, cancellationToken);
 
@@ -120,9 +118,9 @@ namespace Inventory.Services
                 }
 
                 reservationResult = new ReservationSucceededEvent(
-                    Guid.NewGuid(),
-                    @event.OrderId,
-                    @event.Lines);
+                    eventId: Guid.NewGuid(),
+                    orderId: @event.OrderId,
+                    lines: @event.Lines);
 
                 topic= ReservationSucceeded_Topic;
             }
@@ -137,23 +135,50 @@ namespace Inventory.Services
             {
                 EventId = reservationResult.EventId,
                 Topic = topic,
-                Payload = JsonSerializer.Serialize(reservationResult),
+                Payload = JsonSerializer.Serialize(
+                    reservationResult,
+                    reservationResult.GetType()),
                 CreatedAt = DateTime.UtcNow
             });
 
             await _db.SaveChangesAsync(cancellationToken);
-
-            await transaction.CommitAsync(cancellationToken);
         }
 
         public async Task HandlePaymentFailedAsync(PaymentFailedEvent @event, CancellationToken cancellationToken)
         {
+            var reservations = await _db.Reservations
+                .Where(r => r.OrderId == @event.OrderId)
+                .ToListAsync(cancellationToken);
 
+            foreach(var reservation in reservations)
+            {
+                var stockItem = await _db.StockItems
+                                        .SingleAsync(s => s.Sku == reservation.Sku, cancellationToken);
+
+                stockItem.QuantityReserved -= reservation.Quantity;
+                reservation.Status = ReservationStatus.Released;
+            }
+
+            await _db.SaveChangesAsync(cancellationToken);
         }
 
         public async Task HandlePaymentSucceededAsync(PaymentSucceededEvent @event, CancellationToken cancellationToken)
         {
+            var reservations = await _db.Reservations
+                .Where(r => r.OrderId == @event.OrderId)
+                .ToListAsync(cancellationToken);
 
+            foreach (var reservation in reservations)
+            {
+                var stockItem = await _db.StockItems
+                                        .SingleAsync(s => s.Sku == reservation.Sku, cancellationToken);
+
+                stockItem.QuantityOnHand -= reservation.Quantity;
+                stockItem.QuantityReserved -= reservation.Quantity;
+                reservation.Status = ReservationStatus.Consumed;
+            }
+
+            await _db.SaveChangesAsync(cancellationToken);
         }
 
         private async Task<string?> ValidateLines(List<OrderLineContract> lines,CancellationToken cancellationToken)

@@ -13,14 +13,14 @@ namespace Payments.Messaging
 
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IPulsarClient _pulsarClient;
-        private readonly ILogger _logger;
+        private readonly ILogger<OutboxMessagePublisher> _logger;
 
         private readonly Dictionary<string, IProducer<string>> _producers = [];
 
         public OutboxMessagePublisher(
             IServiceScopeFactory scopeFactory,
             IPulsarClient pulsarClient,
-            ILogger logger)
+            ILogger<OutboxMessagePublisher> logger)
         {
             _scopeFactory = scopeFactory;
             _pulsarClient = pulsarClient;
