@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/client/">
+    <Project Path="client/OrderFlow.Client.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Contracts/Contracts.csproj" />
     <Project Path="src/Inventory/Inventory.csproj" />

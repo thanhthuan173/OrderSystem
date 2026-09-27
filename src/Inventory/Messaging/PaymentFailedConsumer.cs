@@ -140,7 +140,6 @@ namespace Inventory.Messaging
                             message.MessageId);
                     }
                 }
-                }
             }
         }
     }

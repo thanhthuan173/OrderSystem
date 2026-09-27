@@ -33,6 +33,21 @@ namespace Orders.Controllers
             }
         }
 
+        [HttpGet("all")]
+        public async Task<IActionResult> GetOrders(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _orderService.GetOrdersAsync(cancellationToken);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return StatusCode(500, "An unexpected error occurred.");
+            }
+        }
+
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetOrder([FromRoute] Guid id, CancellationToken cancellationToken)
         {

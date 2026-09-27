@@ -81,7 +81,36 @@ namespace Orders.Services
                 order.Status.ToString());
         }
 
-        public async Task<GetOrderResponse> GetOrderAsync(Guid id, CancellationToken cancellationToken)
+        public async Task<List<GetOrderResponse>> GetOrdersAsync(
+            CancellationToken cancellationToken)
+        {
+            var orders = await _db.Orders
+                .Include(x => x.Lines)
+                .Include(x => x.SagaState)
+                .ToListAsync(cancellationToken);
+
+            return orders
+                .Select(order => new GetOrderResponse(
+                    OrderId: order.Id,
+                    CustomerId: order.CustomerId,
+                    Status: order.Status.ToString(),
+                    TotalAmount: order.TotalAmount,
+                    ReservationCompleted: order.SagaState.ReservationCompleted,
+                    PaymentCompleted: order.SagaState.PaymentCompleted,
+                    Lines: order.Lines
+                        .Select(line => new GetOrderLineResponse(
+                            Sku: line.Sku,
+                            Quantity: line.Quantity,
+                            UnitPrice: line.UnitPrice))
+                        .ToList(),
+                    CreatedAt: order.CreatedAt,
+                    UpdatedAt: order.UpdatedAt))
+                .ToList();
+        }
+
+        public async Task<GetOrderResponse> GetOrderAsync(
+            Guid id, 
+            CancellationToken cancellationToken)
         {
             var order = await _db.Orders
                 .Include(o => o.SagaState)

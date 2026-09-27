@@ -89,7 +89,7 @@ namespace Inventory.Services
                     .OrderBy(l=>l.Sku)
                     .ToList();
 
-                var stocks = new List<StockItem>();
+                var stocks = new Dictionary<string, StockItem>();
                 string? failureReason = null;
 
                 foreach(var line in sortedLines)
@@ -116,7 +116,7 @@ namespace Inventory.Services
                         break;
                     }
 
-                    stocks.Add(stock);
+                    stocks[line.Sku] = stock;
                 }
 
                 EventBase reservationResult;
@@ -135,8 +135,7 @@ namespace Inventory.Services
                 {
                     foreach(var line in sortedLines)
                     {
-                        var stock = stocks
-                            .Single(s => s.Sku == line.Sku);
+                        var stock = stocks[line.Sku];
 
                         stock.QuantityReserved += line.Quantity;
 
@@ -183,6 +182,24 @@ namespace Inventory.Services
                 await transaction.RollbackAsync(cancellationToken);
                 throw;
             }
+        }
+
+        public async Task HandlePaymentFailedAsync(PaymentFailedEvent @event, CancellationToken cancellationToken)
+        {
+            var reservations = await _db.Reservations
+                .Where(r => r.OrderId == @event.OrderId)
+                .ToListAsync(cancellationToken);
+
+            foreach (var reservation in reservations)
+            {
+                var stockItem = await _db.StockItems
+                                        .SingleAsync(s => s.Sku == reservation.Sku, cancellationToken);
+
+                stockItem.QuantityReserved -= reservation.Quantity;
+                reservation.Status = ReservationStatus.Released;
+            }
+
+            await _db.SaveChangesAsync(cancellationToken);
         }
 
         public async Task HandlePaymentSucceededAsync(PaymentSucceededEvent @event, CancellationToken cancellationToken)
