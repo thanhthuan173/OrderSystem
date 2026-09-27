@@ -76,96 +76,126 @@ namespace Inventory.Services
             OrderPlacedEvent @event,
             CancellationToken cancellationToken)
         {
-            var alreadyProcessed = await _db.InboxMessages
-                .AnyAsync(i => i.EventId == @event.EventId, cancellationToken);
-
-            if (alreadyProcessed)
+            if (await IsProcessedAsync(@event.EventId, cancellationToken))
             {
                 return;
             }
 
-            EventBase reservationResult;
-            string topic;
+            await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
 
-            string? failureReason = await ValidateLines(@event.Lines, cancellationToken);
-
-            if(failureReason is not null)
+            try
             {
-                reservationResult = new ReservationFailedEvent(
-                    Guid.NewGuid(),
-                    @event.OrderId,
-                    failureReason);
+                var sortedLines = @event.Lines
+                    .OrderBy(l=>l.Sku)
+                    .ToList();
 
-                topic = ReservationFailed_Topic;
-            }
-            else
-            {
-                foreach ( var line in @event.Lines )
+                var stocks = new List<StockItem>();
+                string? failureReason = null;
+
+                foreach(var line in sortedLines)
                 {
                     var stock = await _db.StockItems
-                        .FirstOrDefaultAsync(s => s.Sku == line.Sku, cancellationToken);
+                        .FromSqlInterpolated($"""
+                            SELECT *
+                            FROM stock_items
+                            WHERE sku = {line.Sku}
+                            FOR UPDATE
+                            """)
+                        .SingleOrDefaultAsync(cancellationToken);
 
-                    stock!.QuantityReserved += line.Quantity;
-
-                    _db.Reservations.Add(new Reservation
+                    if(stock is null)
                     {
-                        OrderId = @event.OrderId,
-                        Sku = line.Sku,
-                        Quantity = line.Quantity,
-                        Status = ReservationStatus.Active,
-                        CreatedAt = DateTime.UtcNow,
-                    });
+                        failureReason= $"SKU {line.Sku} does not exist";
+                        break;
+                    }
+
+                    var available = stock.QuantityOnHand - stock.QuantityReserved;
+                    if (available < line.Quantity)
+                    {
+                        failureReason = $"Not enough stock for SKU {line.Sku}";
+                        break;
+                    }
+
+                    stocks.Add(stock);
                 }
 
-                reservationResult = new ReservationSucceededEvent(
-                    eventId: Guid.NewGuid(),
-                    orderId: @event.OrderId,
-                    lines: @event.Lines);
+                EventBase reservationResult;
+                string topic;
 
-                topic= ReservationSucceeded_Topic;
+                if (failureReason is not null)
+                {
+                    reservationResult = new ReservationFailedEvent(
+                        Guid.NewGuid(),
+                        @event.OrderId,
+                        failureReason);
+
+                    topic = ReservationFailed_Topic;
+                }
+                else
+                {
+                    foreach(var line in sortedLines)
+                    {
+                        var stock = stocks
+                            .Single(s => s.Sku == line.Sku);
+
+                        stock.QuantityReserved += line.Quantity;
+
+                        _db.Reservations.Add(new Reservation
+                        {
+                            OrderId = @event.OrderId,
+                            Sku = stock.Sku,
+                            Quantity = line.Quantity,
+                            Status = ReservationStatus.Active,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+
+                    topic = ReservationSucceeded_Topic;
+
+                    reservationResult = new ReservationSucceededEvent(
+                        Guid.NewGuid(),
+                        @event.OrderId,
+                        @event.Lines);
+                }
+
+                _db.InboxMessages.Add(new InboxMessage
+                {
+                    EventId = @event.EventId,
+                    ProcessedAt = DateTime.UtcNow
+                });
+
+                _db.OutboxMessages.Add(new OutboxMessage
+                {
+                    EventId = reservationResult.EventId,
+                    Topic = topic,
+                    Payload = JsonSerializer.Serialize(
+                        reservationResult,
+                        reservationResult.GetType()),
+                    CreatedAt = DateTime.UtcNow
+                });
+
+                await _db.SaveChangesAsync(cancellationToken);
+
+                await transaction.CommitAsync(cancellationToken);
             }
-
-            _db.InboxMessages.Add(new InboxMessage
+            catch
             {
-                EventId = @event.EventId,
-                ProcessedAt = DateTime.UtcNow
-            });
-
-            _db.OutboxMessages.Add(new OutboxMessage
-            {
-                EventId = reservationResult.EventId,
-                Topic = topic,
-                Payload = JsonSerializer.Serialize(
-                    reservationResult,
-                    reservationResult.GetType()),
-                CreatedAt = DateTime.UtcNow
-            });
-
-            await _db.SaveChangesAsync(cancellationToken);
-        }
-
-        public async Task HandlePaymentFailedAsync(PaymentFailedEvent @event, CancellationToken cancellationToken)
-        {
-            var reservations = await _db.Reservations
-                .Where(r => r.OrderId == @event.OrderId)
-                .ToListAsync(cancellationToken);
-
-            foreach(var reservation in reservations)
-            {
-                var stockItem = await _db.StockItems
-                                        .SingleAsync(s => s.Sku == reservation.Sku, cancellationToken);
-
-                stockItem.QuantityReserved -= reservation.Quantity;
-                reservation.Status = ReservationStatus.Released;
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
             }
-
-            await _db.SaveChangesAsync(cancellationToken);
         }
 
         public async Task HandlePaymentSucceededAsync(PaymentSucceededEvent @event, CancellationToken cancellationToken)
         {
+            if(await IsProcessedAsync(@event.EventId, cancellationToken))
+            {
+                return;
+            }
+
             var reservations = await _db.Reservations
-                .Where(r => r.OrderId == @event.OrderId)
+                .Where(r =>
+                    r.OrderId == @event.OrderId &&
+                    r.Status == ReservationStatus.Active)
                 .ToListAsync(cancellationToken);
 
             foreach (var reservation in reservations)
@@ -178,30 +208,18 @@ namespace Inventory.Services
                 reservation.Status = ReservationStatus.Consumed;
             }
 
+            _db.InboxMessages.Add(new InboxMessage
+            {
+                EventId = @event.EventId,
+                ProcessedAt = DateTime.UtcNow
+            });
+
             await _db.SaveChangesAsync(cancellationToken);
         }
 
-        private async Task<string?> ValidateLines(List<OrderLineContract> lines,CancellationToken cancellationToken)
+        private async Task<bool> IsProcessedAsync(Guid eventId, CancellationToken cancellationToken)
         {
-            foreach(var line in lines)
-            {
-                var stock = await _db.StockItems
-                    .FirstOrDefaultAsync(s => s.Sku == line.Sku, cancellationToken);
-
-                if(stock == null)
-                {
-                    return $"SKU {line.Sku} does not exists";
-                }
-
-                var available = stock.QuantityOnHand - stock.QuantityReserved;
-
-                if (available < line.Quantity)
-                {
-                    return $"Not enough stock for SKU {line.Sku}";
-                }
-            }
-
-            return null;
+            return await _db.InboxMessages.AnyAsync(i => i.EventId == eventId, cancellationToken);
         }
     }
 }

@@ -26,9 +26,13 @@ builder.Services.AddSingleton<IPulsarClient>(_ =>
         .Build();
 });
 
+builder.Services.AddSingleton<PulsarHealthState>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddHostedService<OutboxMessagePublisher>();
 builder.Services.AddHostedService<ReservationSucceededConsumer>();
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<PaymentsDbContext>("database")
+    .AddCheck<PulsarHealthCheck>("pulsar");
 
 var app = builder.Build();
 
@@ -41,5 +45,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.MapControllers();
+
+app.MapHealthChecks("/health");
 
 app.Run();
