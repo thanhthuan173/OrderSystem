@@ -17,6 +17,9 @@ namespace Inventory.Data
             ConfigureReservation(modelBuilder);
             ConfigureOutboxMessage(modelBuilder);
             ConfigureInboxMessage(modelBuilder);
+
+            SeedStockItems(modelBuilder);
+            SeedReservations(modelBuilder);
         }
 
         private static void ConfigureStockItem(ModelBuilder modelBuilder)
@@ -144,6 +147,75 @@ namespace Inventory.Data
                     .HasDefaultValueSql("NOW()")
                     .IsRequired();
             });
+        }
+
+        private static void SeedStockItems(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<StockItem>().HasData(
+                new StockItem
+                {
+                    Sku = "WIDGET-01",
+                    QuantityOnHand = 100,
+                    QuantityReserved = 0
+                },
+                new StockItem
+                {
+                    Sku = "WIDGET-02",
+                    QuantityOnHand = 100,
+                    QuantityReserved = 2
+                },
+                new StockItem
+                {
+                    Sku = "WIDGET-03",
+                    QuantityOnHand = 100,
+                    QuantityReserved = 2
+                },
+                new StockItem
+                {
+                    Sku = "WIDGET-04",
+                    QuantityOnHand = 98,
+                    QuantityReserved = 0
+                }
+            );
+        }
+
+        private static void SeedReservations(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Reservation>().HasData(
+                new Reservation
+                {
+                    Id = 1,
+                    OrderId = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+                    Sku = "WIDGET-03",
+                    Quantity = 2,
+                    Status = ReservationStatus.Active,
+                    CreatedAt = new DateTime(
+                        2026, 9, 28, 10, 2, 30,
+                        DateTimeKind.Utc)
+                },
+                new Reservation
+                {
+                    Id = 2,
+                    OrderId = Guid.Parse("44444444-4444-4444-4444-444444444444"),
+                    Sku = "WIDGET-04",
+                    Quantity = 2,
+                    Status = ReservationStatus.Consumed,
+                    CreatedAt = new DateTime(
+                        2026, 9, 28, 10, 3, 30,
+                        DateTimeKind.Utc)
+                },
+                new Reservation
+                {
+                    Id = 3,
+                    OrderId = Guid.Parse("55555555-5555-5555-5555-555555555555"),
+                    Sku = "WIDGET-01",
+                    Quantity = 1,
+                    Status = ReservationStatus.Released,
+                    CreatedAt = new DateTime(
+                        2026, 9, 28, 10, 4, 30,
+                        DateTimeKind.Utc)
+                }
+            );
         }
     }
 }

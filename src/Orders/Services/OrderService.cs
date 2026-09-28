@@ -81,31 +81,18 @@ namespace Orders.Services
                 order.Status.ToString());
         }
 
-        public async Task<List<GetOrderResponse>> GetOrdersAsync(
+        public async Task<List<GetOrderSummaryResponse>> GetOrdersAsync(
             CancellationToken cancellationToken)
         {
-            var orders = await _db.Orders
-                .Include(x => x.Lines)
-                .Include(x => x.SagaState)
-                .ToListAsync(cancellationToken);
-
-            return orders
-                .Select(order => new GetOrderResponse(
+            return await _db.Orders
+                .AsNoTracking()
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(order => new GetOrderSummaryResponse(
                     OrderId: order.Id,
-                    CustomerId: order.CustomerId,
                     Status: order.Status.ToString(),
                     TotalAmount: order.TotalAmount,
-                    ReservationCompleted: order.SagaState.ReservationCompleted,
-                    PaymentCompleted: order.SagaState.PaymentCompleted,
-                    Lines: order.Lines
-                        .Select(line => new GetOrderLineResponse(
-                            Sku: line.Sku,
-                            Quantity: line.Quantity,
-                            UnitPrice: line.UnitPrice))
-                        .ToList(),
-                    CreatedAt: order.CreatedAt,
-                    UpdatedAt: order.UpdatedAt))
-                .ToList();
+                    CreatedAt: order.CreatedAt))
+                .ToListAsync(cancellationToken);
         }
 
         public async Task<GetOrderResponse> GetOrderAsync(
@@ -139,23 +126,18 @@ namespace Orders.Services
                 order.UpdatedAt);
         }
 
-        public async Task<IEnumerable<GetUserOrderResponse>> GetUserOrdersAsync(string customerId, CancellationToken cancellationToken)
+        public async Task<List<GetOrderSummaryResponse>> GetUserOrdersAsync(string customerId, CancellationToken cancellationToken)
         {
-            var userOrders =  await _db.Orders
-                .Where(o=>o.CustomerId==customerId)
+            return await _db.Orders
+                .AsNoTracking()
+                .Where(order => order.CustomerId == customerId)
+                .OrderByDescending(order => order.CreatedAt)
+                .Select(order => new GetOrderSummaryResponse(
+                    OrderId: order.Id,
+                    Status: order.Status.ToString(),
+                    TotalAmount: order.TotalAmount,
+                    CreatedAt: order.CreatedAt))
                 .ToListAsync(cancellationToken);
-
-            var orders = new List<GetUserOrderResponse>();
-            foreach(var order in userOrders)
-            {
-                orders.Add(new GetUserOrderResponse(
-                    order.Id,
-                    order.Status.ToString(),
-                    order.TotalAmount,
-                    order.CreatedAt));
-            }
-
-            return orders;
         }
 
         public async Task HandleReservationFailedAsync(ReservationFailedEvent @event, CancellationToken cancellationToken)

@@ -37,20 +37,13 @@ namespace OrderFlow.Client.Services
         }
 
         public async Task<List<GetOrderSummaryResponse>> GetOrdersAsync(
-            string? customerId = null,
             CancellationToken cancellationToken = default)
         {
-            var url = $"{_baseUrl}/all";
-
-            if (!string.IsNullOrWhiteSpace(customerId))
-            {
-                url += $"?customerId={Uri.EscapeDataString(customerId)}";
-            }
-
-            return await httpClient.GetFromJsonAsync<List<GetOrderSummaryResponse>>(
-                       url,
+            return await httpClient.GetFromJsonAsync<
+                   List<GetOrderSummaryResponse>>(
+                       $"{_baseUrl}/all",
                        cancellationToken)
-                   ?? [];
+               ?? [];
         }
     }
 }

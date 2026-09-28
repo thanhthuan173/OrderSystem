@@ -1,7 +1,7 @@
 ﻿namespace Orders.Models
 {
-    public sealed record GetUserOrderResponse(
-        Guid orderId,
+    public sealed record GetOrderSummaryResponse(
+        Guid OrderId,
         string Status,
         decimal TotalAmount,
         DateTime CreatedAt);

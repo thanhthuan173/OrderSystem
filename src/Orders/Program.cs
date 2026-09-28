@@ -43,7 +43,9 @@ builder.Services.AddCors(options =>
     options.AddPolicy("BlazorClient", policy =>
     {
         policy
-            .WithOrigins("https://localhost:5000")
+            .WithOrigins(
+                "http://localhost:5000",
+                "https://localhost:5000")
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -52,12 +54,19 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider
+        .GetRequiredService<OrdersDbContext>();
+
+    await db.Database.MigrateAsync();
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
-
-app.UseHttpsRedirection();
 
 app.UseCors("BlazorClient");
 

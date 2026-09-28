@@ -15,6 +15,8 @@ namespace Payments.Data
             ConfigurePayment(modelBuilder);
             ConfigureOutboxMessage(modelBuilder);
             ConfigureInboxMessage(modelBuilder);
+
+            SeedPayments(modelBuilder);
         }
 
         private static void ConfigurePayment(ModelBuilder modelBuilder)
@@ -115,6 +117,32 @@ namespace Payments.Data
                     .HasDefaultValueSql("NOW()")
                     .IsRequired();
             });
+        }
+
+        private static void SeedPayments(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Payment>().HasData(
+                new Payment
+                {
+                    Id = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                    OrderId = Guid.Parse("44444444-4444-4444-4444-444444444444"),
+                    Amount = 89.98m,
+                    Status = PaymentStatus.Succeeded,
+                    CreatedAt = new DateTime(
+                        2026, 9, 28, 10, 3, 45,
+                        DateTimeKind.Utc)
+                },
+                new Payment
+                {
+                    Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                    OrderId = Guid.Parse("55555555-5555-5555-5555-555555555555"),
+                    Amount = 49.99m,
+                    Status = PaymentStatus.Failed,
+                    CreatedAt = new DateTime(
+                        2026, 9, 28, 10, 4, 45,
+                        DateTimeKind.Utc)
+                }
+            );
         }
     }
 }
