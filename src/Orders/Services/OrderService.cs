@@ -167,10 +167,18 @@ namespace Orders.Services
                 return;
             }
 
-            var order = await UpdateStatus(
-                @event.OrderId, 
-                orderStatus, 
-                cancellationToken);
+            var order = await _db.Orders
+                .Where(o=>o.Id==@event.OrderId)
+                .SingleAsync(cancellationToken);
+
+            if (order.Status == OrderStatus.Charging)
+            {
+                order = await UpdateStatus(
+                    order.Id, 
+                    orderStatus,
+                    cancellationToken);
+            }
+
             order.SagaState.PaymentCompleted = true;
 
             _db.InboxMessages.Add(new InboxMessage

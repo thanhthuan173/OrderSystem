@@ -86,6 +86,12 @@ namespace Inventory.Services
             try
             {
                 var sortedLines = @event.Lines
+                    .GroupBy(l=>l.Sku)
+                    .Select(g => new
+                    {
+                        Sku = g.Key,
+                        Quantity = g.Sum(l => l.Quantity)
+                    })
                     .OrderBy(l=>l.Sku)
                     .ToList();
 

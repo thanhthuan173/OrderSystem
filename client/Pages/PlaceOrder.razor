@@ -84,13 +84,6 @@ else
         </button>
     </div>
 
-    <p>
-        <strong>Estimated Total:</strong>
-        @_orderRequest.Lines
-        .Sum(x => x.Quantity * x.UnitPrice)
-        .ToString("F2")
-    </p>
-
     <button
             @onclick="PlaceOrderAsync"
             disabled="@(_isSubmitting || _isPolling)">
