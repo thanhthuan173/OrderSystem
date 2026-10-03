@@ -29,39 +29,39 @@ namespace Orders.Data
             {
                 entity.ToTable("orders");
 
-                entity.HasKey(x => x.Id);
+                entity.HasKey(order => order.Id);
 
-                entity.Property(x => x.Id)
+                entity.Property(order => order.Id)
                     .HasColumnName("id");
 
-                entity.Property(x => x.CustomerId)
+                entity.Property(order => order.CustomerId)
                     .HasColumnName("customer_id")
                     .HasMaxLength(100)
                     .IsRequired();
 
-                entity.Property(x => x.TotalAmount)
+                entity.Property(order => order.TotalAmount)
                     .HasColumnName("total_amount")
                     .HasPrecision(10, 2)
                     .IsRequired();
 
-                entity.Property(x => x.Status)
+                entity.Property(order => order.Status)
                     .HasColumnName("status")
                     .HasConversion<string>()
                     .IsRequired();
 
-                entity.Property(x => x.CreatedAt)
+                entity.Property(order => order.CreatedAt)
                     .HasColumnName("created_at")
                     .HasColumnType("timestamp with time zone")
                     .HasDefaultValueSql("NOW()")
                     .IsRequired();
 
-                entity.Property(x => x.UpdatedAt)
+                entity.Property(order => order.UpdatedAt)
                     .HasColumnName("updated_at")
                     .HasColumnType("timestamp with time zone")
                     .HasDefaultValueSql("NOW()")
                     .IsRequired();
 
-                entity.ToTable(t => t.HasCheckConstraint(
+                entity.ToTable(order => order.HasCheckConstraint(
                     "CK_orders_status",
                     "\"status\" IN ('Pending', 'Reserving', 'Charging', 'Confirmed', 'Cancelled')"
                 ));
@@ -74,32 +74,32 @@ namespace Orders.Data
             {
                 entity.ToTable("order_lines");
 
-                entity.HasKey(x => x.Id);
+                entity.HasKey(line => line.Id);
 
-                entity.Property(x => x.Id)
+                entity.Property(line => line.Id)
                     .HasColumnName("id");
 
-                entity.Property(x => x.OrderId)
+                entity.Property(line => line.OrderId)
                     .HasColumnName("order_id")
                     .IsRequired();
 
-                entity.Property(x => x.Sku)
+                entity.Property(line => line.Sku)
                     .HasColumnName("sku")
                     .HasMaxLength(50)
                     .IsRequired();
 
-                entity.Property(x => x.Quantity)
+                entity.Property(line => line.Quantity)
                     .HasColumnName("quantity")
                     .IsRequired();
 
-                entity.Property(x => x.UnitPrice)
+                entity.Property(line => line.UnitPrice)
                     .HasColumnName("unit_price")
                     .HasPrecision(10, 2)
                     .IsRequired();
 
-                entity.HasOne(x => x.Order)
-                    .WithMany(x => x.Lines)
-                    .HasForeignKey(x => x.OrderId)
+                entity.HasOne(line => line.Order)
+                    .WithMany(line => line.Lines)
+                    .HasForeignKey(line => line.OrderId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
         }
@@ -110,28 +110,28 @@ namespace Orders.Data
             {
                 entity.ToTable("order_saga_state");
 
-                entity.HasKey(x => x.OrderId);
+                entity.HasKey(state => state.OrderId);
 
-                entity.Property(x => x.OrderId)
+                entity.Property(state => state.OrderId)
                     .HasColumnName("order_id");
 
-                entity.Property(x => x.ReservationCompleted)
+                entity.Property(state => state.ReservationCompleted)
                     .HasColumnName("reservation_completed")
                     .HasDefaultValue(false)
                     .IsRequired();
 
-                entity.Property(x => x.PaymentCompleted)
+                entity.Property(state => state.PaymentCompleted)
                     .HasColumnName("payment_completed")
                     .HasDefaultValue(false)
                     .IsRequired();
 
-                entity.Property(x => x.LastProcessedEventId)
+                entity.Property(state => state.LastProcessedEventId)
                     .HasColumnName("last_processed_event_id")
                     .IsRequired(false);
 
-                entity.HasOne(x => x.Order)
-                    .WithOne(x => x.SagaState)
-                    .HasForeignKey<OrderSagaState>(x => x.OrderId)
+                entity.HasOne(state => state.Order)
+                    .WithOne(state => state.SagaState)
+                    .HasForeignKey<OrderSagaState>(state => state.OrderId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
         }
@@ -142,35 +142,35 @@ namespace Orders.Data
             {
                 entity.ToTable("outbox_messages");
 
-                entity.HasKey(x => x.Id);
+                entity.HasKey(message => message.Id);
 
-                entity.Property(x => x.Id)
+                entity.Property(message => message.Id)
                     .HasColumnName("id");
 
-                entity.Property(x => x.EventId)
+                entity.Property(message => message.EventId)
                     .HasColumnName("event_id")
                     .IsRequired();
 
-                entity.HasIndex(x => x.EventId)
+                entity.HasIndex(message => message.EventId)
                     .IsUnique();
 
-                entity.Property(x => x.Topic)
+                entity.Property(message => message.Topic)
                     .HasColumnName("topic")
                     .HasMaxLength(255)
                     .IsRequired();
 
-                entity.Property(x => x.Payload)
+                entity.Property(message => message.Payload)
                     .HasColumnName("payload")
                     .HasColumnType("jsonb")
                     .IsRequired();
 
-                entity.Property(x => x.CreatedAt)
+                entity.Property(message => message.CreatedAt)
                     .HasColumnName("created_at")
                     .HasColumnType("timestamp with time zone")
                     .HasDefaultValueSql("NOW()")
                     .IsRequired();
 
-                entity.Property(x => x.PublishedAt)
+                entity.Property(message => message.PublishedAt)
                     .HasColumnName("published_at")
                     .HasColumnType("timestamp with time zone")
                     .IsRequired(false);
@@ -183,12 +183,12 @@ namespace Orders.Data
             {
                 entity.ToTable("inbox_messages");
 
-                entity.HasKey(x => x.EventId);
+                entity.HasKey(message => message.EventId);
 
-                entity.Property(x => x.EventId)
+                entity.Property(message => message.EventId)
                     .HasColumnName("event_id");
 
-                entity.Property(x => x.ProcessedAt)
+                entity.Property(message => message.ProcessedAt)
                     .HasColumnName("processed_at")
                     .HasColumnType("timestamp with time zone")
                     .HasDefaultValueSql("NOW()")

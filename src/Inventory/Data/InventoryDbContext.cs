@@ -28,17 +28,17 @@ namespace Inventory.Data
             {
                 entity.ToTable("stock_items");
 
-                entity.HasKey(x => x.Sku);
+                entity.HasKey(item => item.Sku);
 
-                entity.Property(x => x.Sku)
+                entity.Property(item => item.Sku)
                     .HasColumnName("sku")
                     .HasMaxLength(50);
 
-                entity.Property(x => x.QuantityOnHand)
+                entity.Property(item => item.QuantityOnHand)
                     .HasColumnName("quantity_on_hand")
                     .IsRequired();
 
-                entity.Property(x => x.QuantityReserved)
+                entity.Property(item => item.QuantityReserved)
                     .HasColumnName("quantity_reserved")
                     .HasDefaultValue(0)
                     .IsRequired();
@@ -51,39 +51,39 @@ namespace Inventory.Data
             {
                 entity.ToTable("reservations");
 
-                entity.HasKey(x => x.Id);
+                entity.HasKey(reservation => reservation.Id);
 
-                entity.Property(x => x.Id)
+                entity.Property(reservation => reservation.Id)
                     .HasColumnName("id");
 
-                entity.Property(x => x.OrderId)
+                entity.Property(reservation => reservation.OrderId)
                     .HasColumnName("order_id")
                     .IsRequired();
 
-                entity.Property(x => x.Sku)
+                entity.Property(reservation => reservation.Sku)
                     .HasColumnName("sku")
                     .HasMaxLength(50)
                     .IsRequired();
 
-                entity.Property(x => x.Quantity)
+                entity.Property(reservation => reservation.Quantity)
                     .HasColumnName("quantity")
                     .IsRequired();
 
-                entity.Property(x => x.Status)
+                entity.Property(reservation => reservation.Status)
                     .HasColumnName("status")
                     .HasConversion<string>()
                     .IsRequired();
 
-                entity.Property(x => x.CreatedAt)
+                entity.Property(reservation => reservation.CreatedAt)
                     .HasColumnName("created_at")
                     .HasColumnType("timestamp with time zone")
                     .HasDefaultValueSql("NOW()")
                     .IsRequired();
 
-                entity.HasIndex(x => new { x.OrderId, x.Sku })
+                entity.HasIndex(reservation => new { reservation.OrderId, reservation.Sku })
                     .IsUnique();
 
-                entity.ToTable(t => t.HasCheckConstraint(
+                entity.ToTable(reservation => reservation.HasCheckConstraint(
                     "CK_reservations_status",
                     "\"status\" IN ('Active', 'Released', 'Consumed')"));
             });
@@ -95,35 +95,35 @@ namespace Inventory.Data
             {
                 entity.ToTable("outbox_messages");
 
-                entity.HasKey(x => x.Id);
+                entity.HasKey(message => message.Id);
 
-                entity.Property(x => x.Id)
+                entity.Property(message => message.Id)
                     .HasColumnName("id");
 
-                entity.Property(x => x.EventId)
+                entity.Property(message => message.EventId)
                     .HasColumnName("event_id")
                     .IsRequired();
 
-                entity.HasIndex(x => x.EventId)
+                entity.HasIndex(message => message.EventId)
                     .IsUnique();
 
-                entity.Property(x => x.Topic)
+                entity.Property(message => message.Topic)
                     .HasColumnName("topic")
                     .HasMaxLength(255)
                     .IsRequired();
 
-                entity.Property(x => x.Payload)
+                entity.Property(message => message.Payload)
                     .HasColumnName("payload")
                     .HasColumnType("jsonb")
                     .IsRequired();
 
-                entity.Property(x => x.CreatedAt)
+                entity.Property(message => message.CreatedAt)
                     .HasColumnName("created_at")
                     .HasColumnType("timestamp with time zone")
                     .HasDefaultValueSql("NOW()")
                     .IsRequired();
 
-                entity.Property(x => x.PublishedAt)
+                entity.Property(message => message.PublishedAt)
                     .HasColumnName("published_at")
                     .HasColumnType("timestamp with time zone")
                     .IsRequired(false);
@@ -136,12 +136,12 @@ namespace Inventory.Data
             {
                 entity.ToTable("inbox_messages");
 
-                entity.HasKey(x => x.EventId);
+                entity.HasKey(message => message.EventId);
 
-                entity.Property(x => x.EventId)
+                entity.Property(message => message.EventId)
                     .HasColumnName("event_id");
 
-                entity.Property(x => x.ProcessedAt)
+                entity.Property(message => message.ProcessedAt)
                     .HasColumnName("processed_at")
                     .HasColumnType("timestamp with time zone")
                     .HasDefaultValueSql("NOW()")

@@ -47,7 +47,7 @@ namespace Inventory.Services
             }
 
             var item = await _db.StockItems
-                .FirstOrDefaultAsync(x => x.Sku == sku, cancellationToken);
+                .FirstOrDefaultAsync(stockItem => stockItem.Sku == sku, cancellationToken);
 
             if (item == null)
             {
@@ -86,13 +86,13 @@ namespace Inventory.Services
             try
             {
                 var sortedLines = @event.Lines
-                    .GroupBy(l=>l.Sku)
-                    .Select(g => new
+                    .GroupBy(line=> line.Sku)
+                    .Select(group => new
                     {
-                        Sku = g.Key,
-                        Quantity = g.Sum(l => l.Quantity)
+                        Sku = group.Key,
+                        Quantity = group.Sum(line => line.Quantity)
                     })
-                    .OrderBy(l=>l.Sku)
+                    .OrderBy(line=>line.Sku)
                     .ToList();
 
                 var stocks = new Dictionary<string, StockItem>();
@@ -193,13 +193,13 @@ namespace Inventory.Services
         public async Task HandlePaymentFailedAsync(PaymentFailedEvent @event, CancellationToken cancellationToken)
         {
             var reservations = await _db.Reservations
-                .Where(r => r.OrderId == @event.OrderId)
+                .Where(reservation => reservation.OrderId == @event.OrderId)
                 .ToListAsync(cancellationToken);
 
             foreach (var reservation in reservations)
             {
                 var stockItem = await _db.StockItems
-                                        .SingleAsync(s => s.Sku == reservation.Sku, cancellationToken);
+                    .SingleAsync(stockItem => stockItem.Sku == reservation.Sku, cancellationToken);
 
                 stockItem.QuantityReserved -= reservation.Quantity;
                 reservation.Status = ReservationStatus.Released;
@@ -216,15 +216,15 @@ namespace Inventory.Services
             }
 
             var reservations = await _db.Reservations
-                .Where(r =>
-                    r.OrderId == @event.OrderId &&
-                    r.Status == ReservationStatus.Active)
+                .Where(reservation =>
+                    reservation.OrderId == @event.OrderId &&
+                    reservation.Status == ReservationStatus.Active)
                 .ToListAsync(cancellationToken);
 
             foreach (var reservation in reservations)
             {
                 var stockItem = await _db.StockItems
-                                        .SingleAsync(s => s.Sku == reservation.Sku, cancellationToken);
+                    .SingleAsync(stockItem => stockItem.Sku == reservation.Sku, cancellationToken);
 
                 stockItem.QuantityOnHand -= reservation.Quantity;
                 stockItem.QuantityReserved -= reservation.Quantity;
@@ -242,7 +242,7 @@ namespace Inventory.Services
 
         private async Task<bool> IsProcessedAsync(Guid eventId, CancellationToken cancellationToken)
         {
-            return await _db.InboxMessages.AnyAsync(i => i.EventId == eventId, cancellationToken);
+            return await _db.InboxMessages.AnyAsync(message => message.EventId == eventId, cancellationToken);
         }
     }
 }

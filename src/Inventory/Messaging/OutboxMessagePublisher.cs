@@ -58,8 +58,8 @@ namespace Inventory.Messaging
                 .GetRequiredService<InventoryDbContext>();
 
             var messages = await db.OutboxMessages
-                .Where(o=>o.PublishedAt==null)
-                .OrderBy(o=>o.Id)
+                .Where(message => message.PublishedAt==null)
+                .OrderBy(message => message.Id)
                 .Take(MaxBatchSize)
                 .ToListAsync(cancellationToken);
 

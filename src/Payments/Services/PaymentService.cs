@@ -22,7 +22,7 @@ namespace Payments.Services
 
         public async Task<GetPaymentResponse> GetPaymentAsync(Guid orderId, CancellationToken cancellationToken)
         {
-            var payment = await _db.Payments.FirstOrDefaultAsync(x => x.OrderId == orderId, cancellationToken)
+            var payment = await _db.Payments.FirstOrDefaultAsync(payment => payment.OrderId == orderId, cancellationToken)
                 ??throw new Exception("Payment not found");
 
             return new GetPaymentResponse(
@@ -38,7 +38,7 @@ namespace Payments.Services
             CancellationToken cancellationToken)
         {
             var alreadyProcessed=await _db.InboxMessages
-                .AnyAsync(i=>i.EventId==@event.EventId, cancellationToken);
+                .AnyAsync(message => message.EventId == @event.EventId, cancellationToken);
 
             if (alreadyProcessed)
             {

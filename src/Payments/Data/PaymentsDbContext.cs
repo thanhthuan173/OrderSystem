@@ -25,36 +25,36 @@ namespace Payments.Data
             {
                 entity.ToTable("payments");
 
-                entity.HasKey(x => x.Id);
+                entity.HasKey(payment => payment.Id);
 
-                entity.Property(x => x.Id)
+                entity.Property(payment => payment.Id)
                     .HasColumnName("id");
 
-                entity.Property(x => x.OrderId)
+                entity.Property(payment => payment.OrderId)
                     .HasColumnName("order_id")
                     .IsRequired();
 
-                entity.Property(x => x.Amount)
+                entity.Property(payment => payment.Amount)
                     .HasColumnName("amount")
                     .HasPrecision(10, 2)
                     .IsRequired();
 
-                entity.Property(x => x.Status)
+                entity.Property(payment => payment.Status)
                     .HasColumnName("status")
                     .HasConversion<string>()
                     .IsRequired();
 
-                entity.Property(x => x.CreatedAt)
+                entity.Property(payment => payment.CreatedAt)
                     .HasColumnName("created_at")
                     .HasColumnType("timestamp with time zone")
                     .HasDefaultValueSql("NOW()")
                     .IsRequired();
 
-                entity.ToTable(t => t.HasCheckConstraint(
+                entity.ToTable(payment => payment.HasCheckConstraint(
                     "CK_payments_status",
                     "\"status\" IN ('Succeeded', 'Failed')"));
 
-                entity.HasIndex(x => x.OrderId)
+                entity.HasIndex(payment => payment.OrderId)
                     .IsUnique();
             });
         }
@@ -65,35 +65,35 @@ namespace Payments.Data
             {
                 entity.ToTable("outbox_messages");
 
-                entity.HasKey(x => x.Id);
+                entity.HasKey(message => message.Id);
 
-                entity.Property(x => x.Id)
+                entity.Property(message => message.Id)
                     .HasColumnName("id");
 
-                entity.Property(x => x.EventId)
+                entity.Property(message => message.EventId)
                     .HasColumnName("event_id")
                     .IsRequired();
 
-                entity.HasIndex(x => x.EventId)
+                entity.HasIndex(message => message.EventId)
                     .IsUnique();
 
-                entity.Property(x => x.Topic)
+                entity.Property(message => message.Topic)
                     .HasColumnName("topic")
                     .HasMaxLength(255)
                     .IsRequired();
 
-                entity.Property(x => x.Payload)
+                entity.Property(message => message.Payload)
                     .HasColumnName("payload")
                     .HasColumnType("jsonb")
                     .IsRequired();
 
-                entity.Property(x => x.CreatedAt)
+                entity.Property(message => message.CreatedAt)
                     .HasColumnName("created_at")
                     .HasColumnType("timestamp with time zone")
                     .HasDefaultValueSql("NOW()")
                     .IsRequired();
 
-                entity.Property(x => x.PublishedAt)
+                entity.Property(message => message.PublishedAt)
                     .HasColumnName("published_at")
                     .HasColumnType("timestamp with time zone")
                     .IsRequired(false);
@@ -106,12 +106,12 @@ namespace Payments.Data
             {
                 entity.ToTable("inbox_messages");
 
-                entity.HasKey(x => x.EventId);
+                entity.HasKey(message => message.EventId);
 
-                entity.Property(x => x.EventId)
+                entity.Property(message => message.EventId)
                     .HasColumnName("event_id");
 
-                entity.Property(x => x.ProcessedAt)
+                entity.Property(message => message.ProcessedAt)
                     .HasColumnName("processed_at")
                     .HasColumnType("timestamp with time zone")
                     .HasDefaultValueSql("NOW()")

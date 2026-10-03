@@ -23,7 +23,7 @@ namespace Orders.Services
             ValidateOrder(request);
 
             var orderId = Guid.NewGuid();
-            var total = request.Lines.Sum(l => l.Quantity * l.UnitPrice);
+            var total = request.Lines.Sum(line => line.Quantity * line.UnitPrice);
             var order = new Order
             {
                 Id = orderId,
@@ -86,7 +86,7 @@ namespace Orders.Services
         {
             return await _db.Orders
                 .AsNoTracking()
-                .OrderByDescending(x => x.CreatedAt)
+                .OrderByDescending(order => order.CreatedAt)
                 .Select(order => new GetOrderSummaryResponse(
                     OrderId: order.Id,
                     Status: order.Status.ToString(),
@@ -100,9 +100,9 @@ namespace Orders.Services
             CancellationToken cancellationToken)
         {
             var order = await _db.Orders
-                .Include(o => o.SagaState)
-                .Include(o => o.Lines)
-                .FirstOrDefaultAsync(o => o.Id == id, cancellationToken)
+                .Include(order => order.SagaState)
+                .Include(order => order.Lines)
+                .FirstOrDefaultAsync(order => order.Id == id, cancellationToken)
                 ?? throw new Exception("Order not found");
 
             var lines = new List<GetOrderLineResponse>();
@@ -168,7 +168,7 @@ namespace Orders.Services
             }
 
             var order = await _db.Orders
-                .Where(o=>o.Id==@event.OrderId)
+                .Where(order => order.Id == @event.OrderId)
                 .SingleAsync(cancellationToken);
 
             if (order.Status == OrderStatus.Charging)
@@ -215,8 +215,8 @@ namespace Orders.Services
         private async Task<Order> UpdateStatus(Guid orderId,OrderStatus status, CancellationToken cancellationToken)
         {
             var order = await _db.Orders
-                .Include(o => o.SagaState)
-                .SingleAsync(o => o.Id == orderId, cancellationToken);
+                .Include(order => order.SagaState)
+                .SingleAsync(order => order.Id == orderId, cancellationToken);
 
             order.Status = status;
             order.UpdatedAt = DateTime.UtcNow;
@@ -226,7 +226,7 @@ namespace Orders.Services
 
         private async Task<bool> IsProcessedAsync(Guid eventId, CancellationToken cancellationToken)
         {
-            return await _db.InboxMessages.AnyAsync(i=>i.EventId == eventId, cancellationToken);
+            return await _db.InboxMessages.AnyAsync(message => message.EventId == eventId, cancellationToken);
         }
 
         private void ValidateOrder(CreateOrderRequest request)
@@ -246,9 +246,9 @@ namespace Orders.Services
 
         private void ValidateOrderLine(IEnumerable<CreateOrderLineRequest> lines)
         {
-            if (lines.Any(l => string.IsNullOrWhiteSpace(l.Sku) || 
-                                l.Quantity <= 0 || 
-                                l.UnitPrice < 0))
+            if (lines.Any(line => string.IsNullOrWhiteSpace(line.Sku) || 
+                                line.Quantity <= 0 || 
+                                line.UnitPrice < 0))
             {
                 throw new BadHttpRequestException("Each line must have Sku, quantity greater than 0 and positive unit price");
             }
